@@ -1,10 +1,13 @@
+"""
 import tkinter as tk
 from tkinter.ttk import *
 import tkinter.font as font
 import tkinter.scrolledtext as tkst
+"""
 import subprocess
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import socketserver
+import socket
 from io import BytesIO
 import threading
 import requests
@@ -19,7 +22,7 @@ from datetime import datetime
 # run command:
 # python -m app.py --cgi 8001
 
-
+"""
 class Application(tk.Frame):
 
     logcat = "Logcat test"
@@ -111,7 +114,7 @@ class Application(tk.Frame):
             "http://iotdev.htlwy.ac.at/thing/iotusecases2020/setCloudscript", data=jsonFile.read())
 
         self.httpd = socketserver.TCPServer(
-            ("192.168.0.159", 8000),  SimpleHTTPRequestHandler)
+            ("10.202.240.252", 8000),  SimpleHTTPRequestHandler)
         self.serverThread = threading.Thread(target=self.serveInThread)
         self.serverThread.daemon = True
         self.serverThread.start()
@@ -143,6 +146,7 @@ class Application(tk.Frame):
         # self.editArea.insert(tk.INSERT, "\n>" +
         # str(self.logInput.get()) + "\n")
         self.logInput.delete(0, 'end')
+"""
 
 
 class Process:
@@ -201,15 +205,15 @@ class Process:
             fileSet.close()
 
             if(itemThings['info']['language'] == 'javascript'):
-                process1 = subprocess.Popen(['node ',  itemThings['info']['filename']],
-                                            stdout=subprocess.PIPE,
+                process1 = subprocess.Popen(['node',  itemThings['info']['filename']],
+                                            stdout=None,
                                             stderr=None,
-                                            universal_newlines=True)
+                                            universal_newlines=False)
             elif (itemThings['info']['language'] == 'python'):
-                process1 = subprocess.Popen(['python ',  itemThings['info']['filename']],
-                                            stdout=subprocess.PIPE,
+                process1 = subprocess.Popen(['python',  itemThings['info']['filename']],
+                                            stdout=None,
                                             stderr=None,
-                                            universal_newlines=True)
+                                            universal_newlines=False)
             self.runningProcesses.append(
                 {'ID': i, 'processID': process1.pid, 'name': itemThings['info']['name'], 'port': 8001+i})
 
@@ -504,16 +508,36 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
 
 process1 = None
 process_running = False
-root = tk.Tk()
-root.wm_attributes("-transparentcolor", "grey")
-root.geometry("500x500")
-app = Application(master=root)
 
-while True:
-    app.update()
-    if(process_running == True):
-        timeNow = datetime.now().strftime("%H:%M")
-        if (str(timeNow) == "01:00"):
-            jsonFile = open("thingsaves.json", "r")
-            req = requests.post(
-                "http://iotdev.htlwy.ac.at/thing/iotusecases2020/setCloudscript", data=jsonFile.read())
+
+def serveInThread():
+    while True:
+        httpd.handle_request()
+
+
+if __name__ == '__main__':
+    jsonFile = open("thingsaves.json", "r")
+    req = requests.post(
+        "http://iotdev.htlwy.ac.at/thing/iotusecases2020/setCloudscript", data=jsonFile.read())
+
+    # Getting ip address
+    hostname = socket.gethostname()
+    local_ip = socket.gethostbyname(hostname)
+    print("Starting server. " + local_ip + ":8000")
+
+    httpd = socketserver.TCPServer(
+        (local_ip, 8000),  SimpleHTTPRequestHandler)
+    serverThread = threading.Thread(target=serveInThread)
+    serverThread.daemon = True
+    serverThread.start()
+
+    pr = Process()
+    pr.startAllProcesses()
+
+    while True:
+        if(process_running == True):
+            timeNow = datetime.now().strftime("%H:%M")
+            if (str(timeNow) == "01:00"):
+                jsonFile = open("thingsaves.json", "r")
+                req = requests.post(
+                    "http://iotdev.htlwy.ac.at/thing/iotusecases2020/setCloudscript", data=jsonFile.read())

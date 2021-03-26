@@ -7,4 +7,4 @@ app.get('/thingNode', (req, res)=> {
 })
 
 //leave this untouched! 
-app.listen(8001);
+app.listen(8001)
